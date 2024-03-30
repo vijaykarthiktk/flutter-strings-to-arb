@@ -33,7 +33,7 @@ Future<void> main(List<String> arguments) async {
     ..addFlag(
       'create-paths',
       abbr: 'c',
-      help: 'This will create the folders structure recursevly.',
+      help: 'This will create the folders structure recursively.',
       defaultsTo: createPathsKeyDefault,
     );
 
@@ -50,9 +50,7 @@ Future<void> main(List<String> arguments) async {
 
   final Directory sourceDir = Directory(source);
   final Directory outputDir = Directory(output);
-  print('sada');
-  print(sourceDir);
-  print(outputDir);
+
 
   if (createPaths) {
     if (!sourceDir.existsSync()) {
@@ -64,7 +62,7 @@ Future<void> main(List<String> arguments) async {
     }
   }
 
-  var write = false;
+  var write = true;
 
   Map<String, String> allMessages = {};
 
@@ -73,19 +71,17 @@ Future<void> main(List<String> arguments) async {
 
   var locale = "en";
 
-  if (locale != null) {
-    allMessages["@@locale"] = locale;
-  }
+  allMessages["@@locale"] = locale;
 
-  allMessages["@@last_modified"] = new DateTime.now().toIso8601String();
+  allMessages["@@last_modified"] = DateTime.now().toIso8601String();
 
   String outputFilename = "intl_en.arb";
-  var outputFile = new File(path.join(outputDir.path, outputFilename));
-  var encoder = new JsonEncoder.withIndent("  ");
+  var outputFile = File(path.join(outputDir.path, outputFilename));
+  var encoder = const JsonEncoder.withIndent("  ");
 
   // List<String> sortedKeys = allMessages.keys.toList(growable: false)..sort((k1, k2) => k1.compareTo(k2));
   // allMessages = Map.fromIterable(sortedKeys);
-  print(allMessages);
+  // print(allMessages);
 
   if(write) {
     outputFile.writeAsStringSync(encoder.convert(allMessages));
@@ -93,7 +89,7 @@ Future<void> main(List<String> arguments) async {
 }
 
 void recursiveFolderCopySync(String source, List<String> skips, Map<dynamic, dynamic> allMessages, bool write) {
-  Directory directory = new Directory(source);
+  Directory directory = Directory(source);
   var skipWords = ["dart:ui", "dart:io"];
   var finder = DartHardCodedStringFinder(skipWords);
   directory.listSync().forEach((element) {
@@ -108,15 +104,13 @@ void recursiveFolderCopySync(String source, List<String> skips, Map<dynamic, dyn
 
           if (content.contains("context")) {
             //only change strings if there is a context for replacing
-            content = "import 'package:islamic_quiz_flutter/generated/l10n.dart';\n" + content;
-            stringsFounded.forEach((element) {
-              // if (skipWords.any((word) => element.contains(word))) {
-                allMessages[finder.getCamelCase(element)] = element;
-                content = content.replaceAll("\"$element\"", "S.of(context).${finder.getCamelCase(element)}");
-                content = content.replaceAll("\'$element\'", "S.of(context).${finder.getCamelCase(element)}");
+            content = "import 'package:islamic_quiz_flutter/generated/l10n.dart';\n$content";
+            for (var element in stringsFounded) {
+              allMessages[finder.getCamelCase(element)] = element;
+              content = content.replaceAll("\"$element\"", "S.of(context).${finder.getCamelCase(element)}");
+              content = content.replaceAll("'$element'", "S.of(context).${finder.getCamelCase(element)}");
               // }
-            });
-            // element.writeAsString(content);
+            }
           }
         }
       }
@@ -147,10 +141,10 @@ class DartHardCodedStringFinder {
   }
 
   var regex = RegExp("\".*?\"");
-  var regexDart = RegExp("\'.*?\'");
+  var regexDart = RegExp("'.*?'");
 
   String extractHardCodedString(String it, String input) {
-    return it.replaceAll("\"", "").replaceAll("\'", "").trim();
+    return it.replaceAll("\"", "").replaceAll("'", "").trim();
   }
 
   /// Returns a string in the form "UpperCamelCase" or "lowerCamelCase".
@@ -158,8 +152,8 @@ class DartHardCodedStringFinder {
   /// Example:
   ///      print(camelize("dart_vm"));
   ///      => DartVm
-  String getCamelCase(String _words, {String separator: ''}) {
-    List<String> words = _words
+  String getCamelCase(String text, {String separator = ''}) {
+    List<String> words = text
         .replaceAll("\"", "")
         .replaceAll(".", "")
         .replaceAll(",", "")
@@ -177,7 +171,7 @@ class DartHardCodedStringFinder {
         .map((e) => _upperCaseFirstLetter(e))
         .toList();
 
-    if (_words.isNotEmpty) {
+    if (words.isNotEmpty) {
       words[0] = words[0].toLowerCase();
     }
 
@@ -193,33 +187,33 @@ class DartHardCodedStringFinder {
 
     var strings = <String>[];
 
-    result.forEach((e) {
-      var string = extractHardCodedString(e.group(0), e.input);
+    for (var e in result) {
+      var string = extractHardCodedString(e.group(0) ?? "", e.input);
 
       var jsonParamAccessString = e.input.codeUnitAt(e.start-1) =='['.codeUnits.first && e.input.codeUnitAt(e.end) ==']'.codeUnits.first;
       var jsonParamSetString =  e.input.codeUnitAt(e.end) ==':'.codeUnits.first;
-      var uselessArguements =  string.startsWith("\$\{") && string.endsWith("}") ;
+      var uselessArguments =  string.startsWith("\${") && string.endsWith("}") ;
 
-      var include = shouldInclude(string) && !jsonParamSetString && !jsonParamAccessString && !uselessArguements;
+      var include = shouldInclude(string) && !jsonParamSetString && !jsonParamAccessString && !uselessArguments;
       if (include) {
         strings.add(string);
       }
-    });
+    }
 
     Iterable<RegExpMatch> result1 = regexDart.allMatches(content);
 
-    result1.forEach((e) {
-      var string = extractHardCodedString(e.group(0), e.input);
+    for (var e in result1) {
+      var string = extractHardCodedString(e.group(0) ?? "", e.input);
 
       var jsonParamAccessString = e.input.codeUnitAt(e.start-1) =='['.codeUnits.first && e.input.codeUnitAt(e.end) ==']'.codeUnits.first;
       var jsonParamSetString =  e.input.codeUnitAt(e.end) ==':'.codeUnits.first;
-      var uselessArguements =  string.startsWith("\$\{") && string.endsWith("}") ;
+      var uselessArguments =  string.startsWith("\${") && string.endsWith("}") ;
 
-      var include = shouldInclude(string) && !jsonParamSetString && !jsonParamAccessString && !uselessArguements;
+      var include = shouldInclude(string) && !jsonParamSetString && !jsonParamAccessString && !uselessArguments;
       if (include) {
         strings.add(string);
       }
-    });
+    }
 
     return strings;
   }
